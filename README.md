@@ -1,4 +1,6 @@
-﻿# sf4e
+This project has moved to Codeberg: https://codeberg.org/adanducci/sf4e
+
+# sf4e
 
 A process-inspection and modification tool for the Steam release of _Ultra Street Fighter 4_.
 
