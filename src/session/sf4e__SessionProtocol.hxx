@@ -87,6 +87,8 @@ namespace sf4e {
 			MT_BATTLE_SNAPSHOT,
 
 			MT_FORWARD,
+
+			MT_GGPO_DATA,
 		};
 
 		NLOHMANN_JSON_SERIALIZE_ENUM(MessageType, {
@@ -108,6 +110,7 @@ namespace sf4e {
 			{MT_BATTLE_SNAPSHOT, "battle_snapshot"},
 
 			{MT_FORWARD, "forward"},
+			{MT_GGPO_DATA, "ggpo_data"},
 		})
 
 		enum JoinResult {
@@ -222,6 +225,13 @@ namespace sf4e {
 			nlohmann::json msg;
 		};
 
+		struct GgpoDataMsg {
+			MessageType type = MT_GGPO_DATA;
+			ConnectionID src;
+			ConnectionID dest;
+			std::vector<uint8_t> payload;
+		};
+
 		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ConnectionID, host, user);
 
 		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(MemberData, connId, name, ip, port);
@@ -247,5 +257,6 @@ namespace sf4e {
 		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(BattleSnapshot, type, snapshot);
 		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(BattleLoaded, type);
 		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(BattleSynced, type);
+		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(GgpoDataMsg, type, src, dest, payload);
 	}
 }

@@ -11,6 +11,8 @@
 #include "../Dimps/Dimps__Math.hxx"
 #include "sf4e__SessionProtocol.hxx"
 
+namespace sf4e { class SignalingClient; }
+
 namespace sf4e {
 	extern const int SESSION_SERVER_MAX_MESSAGES_PER_POLL;
 
@@ -31,8 +33,10 @@ namespace sf4e {
 		// Connection related data
 		std::string _sidecarHash;
 		HSteamListenSocket _listenSock;
+		HSteamListenSocket _p2pListenSock;
 		HSteamNetPollGroup _pollGroup;
 		ISteamNetworkingSockets* _interface;
+		SignalingClient* _signalingClient;
 
 		// Connection callbacks and message utilities
 		static SessionServer* s_pCallbackInstance;
@@ -64,6 +68,9 @@ namespace sf4e {
 
 		void AddConnection(HSteamNetConnection newConn);
 		int Listen(uint16 nPort);
+		// Begin accepting remote P2P connections via the signaling relay.
+		// Can be called alongside Listen() — both sockets share the poll group.
+		int ListenP2P(SignalingClient* signalingClient);
 		int Step();
 		int Close();
 		void PrepareForCallbacks();

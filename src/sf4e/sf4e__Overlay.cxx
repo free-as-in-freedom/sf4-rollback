@@ -874,9 +874,10 @@ void DrawNetworkCharaConfig(rVsMode::ConfirmedCharaConditions& charaConditions) 
 
 void DrawNetworkJoinPanel(uint8_t deviceIdx, uint8_t deviceType) {
 	static uint8_t delay = 1;
-	static uint16 port = 23456;
+	static uint16 ggpoPort = 23457;
 	static char name[32] = { 0 };
-	static char joinAddr[64] = { 0 };
+	static char roomCode[8] = { 0 };
+	static char signalingUrl[128] = "ws://localhost:9000";
 
 	char* mainMenuQuery[1] = { "MainMenu" };
 	rMainMenu* mainMenu = (rMainMenu*)EventBaseWithEC::FindForegroundEvent(App::GetRootEvent(), mainMenuQuery, 1);
@@ -886,13 +887,18 @@ void DrawNetworkJoinPanel(uint8_t deviceIdx, uint8_t deviceType) {
 	}
 	Text("Join a game");
 	Separator();
-	ImGui::InputText("Session server", joinAddr, 64);
+	ImGui::InputText("Room code", roomCode, 8);
 	ImGui::InputText("Name", name, 32);
-	ImGui::InputScalar("Local GGPO port", ImGuiDataType_U16, &port);
+	ImGui::InputText("Signaling server", signalingUrl, 128);
+	ImGui::InputScalar("Local GGPO port", ImGuiDataType_U16, &ggpoPort);
 	ImGui::InputScalar("Delay", ImGuiDataType_U8, &delay);
 
 	if (Button("Join")) {
-		fUserApp::StartSession(joinAddr, port, sf4e::sidecarHash, std::string(name), deviceType, deviceIdx, delay);
+		fUserApp::StartSessionP2P(
+			std::string(signalingUrl), std::string(roomCode),
+			ggpoPort, sf4e::sidecarHash,
+			std::string(name), deviceType, deviceIdx, delay
+		);
 	}
 }
 
@@ -904,6 +910,8 @@ void DrawNetworkHostPanel(uint8_t deviceIdx, uint8_t deviceType) {
 	static int roundCountIdx = 1;
 	static int roundTimeIdx = 2;
 	static bool bEditionSelect = true;
+	static char signalingUrl[128] = "ws://localhost:9000";
+	static std::string roomCode;
 
 	char* mainMenuQuery[1] = { "MainMenu" };
 	rMainMenu* mainMenu = (rMainMenu*)EventBaseWithEC::FindForegroundEvent(App::GetRootEvent(), mainMenuQuery, 1);
@@ -915,28 +923,32 @@ void DrawNetworkHostPanel(uint8_t deviceIdx, uint8_t deviceType) {
 	Text("Host a game");
 	Separator();
 	ImGui::InputScalar("Delay", ImGuiDataType_U8, &delay);
-	ImGui::InputScalar("Session host port", ImGuiDataType_U16, &hostPort);
 	ImGui::InputScalar("GGPO port", ImGuiDataType_U16, &ggpoPort);
 	ImGui::InputText("Name", name, 32);
+	ImGui::InputText("Signaling server", signalingUrl, 128);
 	Separator();
-	ImGui::Combo("Round cound", &roundCountIdx, GetRoundCountLabel, (void*)roundCountList, 4);
+	ImGui::Combo("Round count", &roundCountIdx, GetRoundCountLabel, (void*)roundCountList, 4);
 	ImGui::Combo("Round time", &roundTimeIdx, GetRoundTimeLabel, (void*)roundTimeList, 3);
 	ImGui::Checkbox("Edition select", &bEditionSelect);
 
-	bool valid = true;
-	if (hostPort == ggpoPort) {
-		Text("Session host port and GGPO port cannot be the same");
-		valid = false;
-	}
-
-	ImGui::BeginDisabled(!valid);
 	if (Button("Start hosting")) {
+		roomCode = fUserApp::GenerateRoomCode();
+		// One server that listens on loopback (for the host's own client)
+		// and via P2P signaling (for the remote joiner).
+		fUserApp::StartServerP2P(
+			std::string(signalingUrl), roomCode, hostPort, sf4e::sidecarHash,
+			bEditionSelect, roundCountList[roundCountIdx].first, roundTimeList[roundTimeIdx].first
+		);
 		char hostAddr[64];
 		snprintf(hostAddr, 64, "127.0.0.1:%d", hostPort);
-		fUserApp::StartServer(hostPort, std::string("localhost"), sf4e::sidecarHash, bEditionSelect, roundCountList[roundCountIdx].first, roundTimeList[roundTimeIdx].first);
 		fUserApp::StartSession(hostAddr, ggpoPort, sf4e::sidecarHash, std::string(name), deviceType, deviceIdx, delay);
 	}
-	ImGui::EndDisabled();
+
+	if (!roomCode.empty()) {
+		Separator();
+		Text("Room code: %s", roomCode.c_str());
+		Text("Share this with your opponent.");
+	}
 }
 
 void DrawNetworkLobbyPanel() {

@@ -17,6 +17,7 @@ find_package(CLI11 CONFIG REQUIRED)
 find_package(GameNetworkingSockets CONFIG REQUIRED)
 find_package(ggpo CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
+find_package(ixwebsocket CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(protobuf CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
@@ -87,6 +88,10 @@ add_library(sf4e STATIC
     "src/sf4e/sf4e__Game__Battle__Vfx.cxx"
     "src/sf4e/sf4e__GameEvents.hxx"
     "src/sf4e/sf4e__GameEvents.cxx"
+    "src/sf4e/sf4e__GgpoRelay.hxx"
+    "src/sf4e/sf4e__GgpoRelay.cxx"
+    "src/sf4e/sf4e__Signaling.hxx"
+    "src/sf4e/sf4e__Signaling.cxx"
     "src/sf4e/sf4e__Overlay.hxx"
     "src/sf4e/sf4e__Overlay.cxx"
     "src/sf4e/sf4e__Pad.hxx"
@@ -99,7 +104,7 @@ add_library(sf4e STATIC
 target_link_libraries(
     sf4e
     PRIVATE ${LIB_DETOURS} Session "Kernel32" "ws2_32" "Mswsock" "AdvApi32" "Shlwapi" "Bcrypt" "Xinput9_1_0"
-    PUBLIC imgui::imgui nlohmann_json::nlohmann_json spdlog::spdlog GameNetworkingSockets::shared ggpo::GGPO
+    PUBLIC imgui::imgui nlohmann_json::nlohmann_json spdlog::spdlog GameNetworkingSockets::shared ggpo::GGPO ixwebsocket::ixwebsocket
 )
 
 add_library(Session STATIC
