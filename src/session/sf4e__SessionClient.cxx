@@ -90,12 +90,11 @@ int SessionClient::ConnectP2P(SignalingClient* signalingClient) {
 	opts[1].SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged,
 	               (void*)SteamNetConnectionStatusChangedCallback);
 
-	// Use a generic peer identity — the actual routing is handled by the
-	// signaling relay, so this is just a label for GNS bookkeeping.
-	SteamNetworkingIdentity peerIdentity;
-	peerIdentity.SetGenericString("sf4e-host");
-
-	_conn = _interface->ConnectP2PCustomSignaling(signalingClient, &peerIdentity, 0, 2, opts);
+	// Pass nullptr so GNS accepts whatever identity the host reports.
+	// The host's GNS identity is auto-assigned (IP-based) and unknown at
+	// connect time; hardcoding a string identity would cause every signal
+	// from the host to be rejected as "wrong remote identity".
+	_conn = _interface->ConnectP2PCustomSignaling(signalingClient, nullptr, 0, 2, opts);
 	if (_conn == k_HSteamNetConnection_Invalid) {
 		spdlog::error("Client: ConnectP2PCustomSignaling failed");
 		return -1;
@@ -180,7 +179,6 @@ int SessionClient::Step()
 
 		const char* start = (const char*)pIncomingMsg->m_pData;
 		json msg = json::parse(start, start + pIncomingMsg->m_cbSize);
-		SteamNetworkingIPAddr peerAddr = *(pIncomingMsg->m_identityPeer.GetIPAddr());
 		pIncomingMsg->Release();
 
 		SessionProtocol::MessageType type;

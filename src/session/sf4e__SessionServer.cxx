@@ -253,7 +253,11 @@ int SessionServer::Step()
 					continue;
 				}
 
-				SteamNetworkingIPAddr peerAddr = *(pIncomingMsg->m_identityPeer.GetIPAddr());
+				SteamNetworkingIPAddr peerAddr;
+				peerAddr.Clear();
+				if (const SteamNetworkingIPAddr* pIP = pIncomingMsg->m_identityPeer.GetIPAddr()) {
+					peerAddr = *pIP;
+				}
 				SessionProtocol::JoinResult joinResult = RegisterToWait(conn, request.port, request.sidecarHash, request.username, peerAddr, cid);
 				if (joinResult != SessionProtocol::JOIN_OK) {
 					spdlog::info("Server: rejecting registration for reason {}", (int)joinResult);

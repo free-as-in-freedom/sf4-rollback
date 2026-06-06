@@ -15,6 +15,7 @@
 #include "sf4e__SessionClient.hxx"
 #include "sf4e__SessionServer.hxx"
 #include "sf4e__SessionProtocol.hxx"
+#include "../sf4e/sf4e__Signaling.hxx"
 
 using ImGui::Begin;
 using ImGui::Button;
@@ -81,8 +82,8 @@ struct AppInstance {
         std::string sidecarHash,
         uint16_t ggpoPort,
         std::string& name
-    ) : 
-        callbacks{ this, OnError, OnReady, OnBattleSynced },
+    ) :
+        callbacks{ this, OnError, OnReady, OnBattleSynced, nullptr },
         c(
             callbacks,
             sidecarHash,
@@ -269,6 +270,7 @@ struct AppInstance {
 
 static std::unique_ptr<SessionServer> g_server;
 static std::deque<AppInstance> g_instances;
+static std::unique_ptr<sf4e::SignalingClient> g_signalingClient;
 
 // Forward declarations of helper functions
 bool CreateDeviceD3D(HWND hWnd);
@@ -310,6 +312,64 @@ void DrawServerSessionInfo(const std::vector<SessionServer::SessionMember>& clie
     else {
         Text("(No one in queue)");
     }
+}
+
+int DrawP2PWindow() {
+    static char signalingUrl[256] = "wss://sf4-rollback-production.up.railway.app";
+    static char roomCode[64] = "test-room";
+    static char playerName[64] = "Player1";
+    static char sidecarHash[32] = "123";
+    static int ggpoPort = 7000;
+    static std::string statusMsg = "Not connected";
+
+    Begin("P2P Connection", nullptr, ImGuiWindowFlags_None);
+
+    ImGui::InputText("Signaling URL", signalingUrl, sizeof(signalingUrl));
+    ImGui::InputText("Room code", roomCode, sizeof(roomCode));
+    ImGui::InputText("Name", playerName, sizeof(playerName));
+    ImGui::InputText("Sidecar hash", sidecarHash, sizeof(sidecarHash));
+    ImGui::InputInt("GGPO port", &ggpoPort);
+
+    ImGui::Spacing();
+
+    if (Button("Host via P2P")) {
+        g_signalingClient.reset(new sf4e::SignalingClient(
+            signalingUrl,
+            sf4e::SignalingClient::Role::Host,
+            roomCode
+        ));
+        g_signalingClient->Start();
+        if (g_server) {
+            g_server->ListenP2P(g_signalingClient.get());
+            statusMsg = "Hosting — waiting for guest in room: " + std::string(roomCode);
+        } else {
+            statusMsg = "Error: no server running";
+        }
+    }
+
+    ImGui::SameLine();
+
+    if (Button("Join via P2P")) {
+        g_signalingClient.reset(new sf4e::SignalingClient(
+            signalingUrl,
+            sf4e::SignalingClient::Role::Guest,
+            roomCode
+        ));
+        g_signalingClient->Start();
+        std::string name(playerName);
+        g_instances.emplace_back(std::string(sidecarHash), (uint16_t)ggpoPort, name);
+        g_instances.back().c.ConnectP2P(g_signalingClient.get());
+        statusMsg = "Joining room: " + std::string(roomCode);
+    }
+
+    ImGui::Spacing();
+    Text("Status: %s", statusMsg.c_str());
+    if (g_signalingClient) {
+        Text("WebSocket: %s", g_signalingClient->IsConnected() ? "connected" : "connecting...");
+    }
+
+    End();
+    return 0;
 }
 
 int DrawServerWindow() {
@@ -385,6 +445,16 @@ int main(int, char**)
     if (!GameNetworkingSockets_Init(nullptr, errMsg)) {
         spdlog::error("GameNetworkingSockets_Init failed.  {}", errMsg);
     }
+    SteamNetworkingUtils()->SetGlobalConfigValueString(
+        k_ESteamNetworkingConfig_P2P_STUN_ServerList,
+        "stun.l.google.com:19302,stun1.l.google.com:19302"
+    );
+    SteamNetworkingUtils()->SetDebugOutputFunction(
+        k_ESteamNetworkingSocketsDebugOutputType_Msg,
+        [](ESteamNetworkingSocketsDebugOutputType, const char* pszMsg) {
+            spdlog::debug("[GNS] {}", pszMsg);
+        }
+    );
     sf4e::SessionProtocol::FixedPoint stubRoundTime = { 0, 99 };
     g_server.reset(new SessionServer(std::string("localhost"), std::string("123"), false, 3, stubRoundTime));
 
@@ -494,6 +564,7 @@ int main(int, char**)
         if (show_demo_window)
             ImGui::ShowDemoWindow(&show_demo_window);
 
+        DrawP2PWindow();
         DrawServerWindow();
         for (int i = 0; i < g_instances.size(); i++) {
             DrawAppInstanceWindow(i, g_instances[i]);
@@ -526,6 +597,7 @@ int main(int, char**)
     ::DestroyWindow(hwnd);
     ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
 
+    g_signalingClient.reset();
     g_server.reset();
     g_instances.clear();
     GameNetworkingSockets_Kill();
