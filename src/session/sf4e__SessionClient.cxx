@@ -16,6 +16,7 @@
 
 #include "sf4e__SessionClient.hxx"
 #include "sf4e__SessionProtocol.hxx"
+#include "../sf4e/sf4e__Signaling.hxx"
 
 using nlohmann::json;
 
@@ -80,6 +81,29 @@ int SessionClient::Connect(HSteamNetConnection newConn) {
 	return 0;
 }
 
+int SessionClient::ConnectP2P(SignalingClient* signalingClient) {
+	_signalingClient = signalingClient;
+	_snapshotsEnabled = true;
+
+	SteamNetworkingConfigValue_t opts[2];
+	opts[0].SetInt64(k_ESteamNetworkingConfig_ConnectionUserData, (int64)this);
+	opts[1].SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged,
+	               (void*)SteamNetConnectionStatusChangedCallback);
+
+	// Use a generic peer identity — the actual routing is handled by the
+	// signaling relay, so this is just a label for GNS bookkeeping.
+	SteamNetworkingIdentity peerIdentity;
+	peerIdentity.SetGenericString("sf4e-host");
+
+	_conn = _interface->ConnectP2PCustomSignaling(signalingClient, &peerIdentity, 0, 2, opts);
+	if (_conn == k_HSteamNetConnection_Invalid) {
+		spdlog::error("Client: ConnectP2PCustomSignaling failed");
+		return -1;
+	}
+	spdlog::info("Client: P2P connection initiated");
+	return 0;
+}
+
 int SessionClient::Connect(const SteamNetworkingIPAddr& serverAddr) {
 	char szAddr[SteamNetworkingIPAddr::k_cchMaxString];
 	SteamNetworkingConfigValue_t opts[2];
@@ -127,6 +151,11 @@ int SessionClient::Step()
 {
 	if (_interface == nullptr || _conn == k_HSteamNetConnection_Invalid) {
 		return -1;
+	}
+
+	// Let the signaling client dispatch any queued ICE signals into GNS.
+	if (_signalingClient) {
+		_signalingClient->Poll(_interface);
 	}
 
 	if (!_connected) {
@@ -295,6 +324,19 @@ int SessionClient::Step()
 		}
 		else if (type == SessionProtocol::MT_FORWARD) {
 			spdlog::debug("Received forwarded message: {}", msg.dump());
+		}
+		else if (type == SessionProtocol::MT_GGPO_DATA) {
+			if (_callbacks.OnGgpoData != nullptr) {
+				SessionProtocol::GgpoDataMsg ggpoMsg;
+				try {
+					msg.get_to(ggpoMsg);
+				}
+				catch (json::exception e) {
+					spdlog::debug("Client: could not deserialize ggpo_data message");
+					continue;
+				}
+				_callbacks.OnGgpoData(ggpoMsg.src, ggpoMsg.payload, this, _callbacks);
+			}
 		}
 		else {
 			spdlog::warn("Client: got unrecognized message type: {}", (int)type);

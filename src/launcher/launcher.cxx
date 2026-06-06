@@ -2,6 +2,8 @@
 #define UNICODE
 #endif
 
+#include <string>
+#include <vector>
 #include <windows.h>
 #include <pathcch.h>
 #include <shellapi.h>
@@ -332,7 +334,21 @@ int WINAPI wWinMain(
 		GetCommandLineW(),
 		&argc
 	);
-	CLI11_PARSE(app, argc, argv);
+	// CLI11 2.3.2 only accepts narrow char**. Convert wide argv to narrow.
+	std::vector<std::string> argStrings;
+	std::vector<const char*> narrowArgv;
+	for (int i = 0; i < argc; i++) {
+		int len = WideCharToMultiByte(CP_UTF8, 0, argv[i], -1, nullptr, 0, nullptr, nullptr);
+		argStrings.push_back(std::string(len, '\0'));
+		WideCharToMultiByte(CP_UTF8, 0, argv[i], -1, &argStrings.back()[0], len, nullptr, nullptr);
+		argStrings.back().resize(len - 1);
+		narrowArgv.push_back(argStrings.back().c_str());
+	}
+	try {
+		app.parse((int)narrowArgv.size(), narrowArgv.data());
+	} catch (const CLI::ParseError& e) {
+		return app.exit(e);
+	}
 
 	// Compute the path to the sidecar DLL based on the launcher's directory.
 	// Ideally, this wouldn't have to convert from wide-char to multibyte in

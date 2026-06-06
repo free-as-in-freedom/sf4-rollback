@@ -20,6 +20,10 @@
 #include "sf4e__SessionProtocol.hxx"
 #include "sf4e__SessionServer.hxx"
 
+// SignalingClient is in sf4e, but SessionServer only needs the Poll() call.
+// Forward-declare here and include only enough to call Poll().
+#include "../sf4e/sf4e__Signaling.hxx"
+
 using nlohmann::json;
 
 namespace SessionProtocol = sf4e::SessionProtocol;
@@ -36,7 +40,9 @@ SessionServer::SessionServer(std::string identity, std::string sidecarHash, bool
 	_interface(SteamNetworkingSockets()),
 	_dataDirty(false),
 	_lobbyData(SessionProtocol::LobbyData::NULL_LOBBY),
-	_listenSock(k_HSteamListenSocket_Invalid)
+	_listenSock(k_HSteamListenSocket_Invalid),
+	_p2pListenSock(k_HSteamListenSocket_Invalid),
+	_signalingClient(nullptr)
 {
 	_lobbyData.id = { _identity, "1" };
 	_lobbyData.editionSelect = editionSelect;
@@ -95,8 +101,26 @@ int SessionServer::Listen(uint16 nPort) {
 	return 0;
 }
 
+int SessionServer::ListenP2P(SignalingClient* signalingClient) {
+	SteamNetworkingConfigValue_t opt;
+	opt.SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged, (void*)SteamNetConnectionStatusChangedCallback);
+	_p2pListenSock = _interface->CreateListenSocketP2P(0, 1, &opt);
+	if (_p2pListenSock == k_HSteamListenSocket_Invalid) {
+		spdlog::error("Server: failed to create P2P listen socket");
+		return -1;
+	}
+	_signalingClient = signalingClient;
+	spdlog::info("Server: P2P listen socket created");
+	return 0;
+}
+
 int SessionServer::Step()
 {
+	// Let the signaling client dispatch any queued ICE signals into GNS.
+	if (_signalingClient) {
+		_signalingClient->Poll(_interface);
+	}
+
 	ISteamNetworkingMessage* pIncomingMsgs[SESSION_SERVER_MAX_MESSAGES_PER_POLL] = { 0 };
 	int numMsgs = _interface->ReceiveMessagesOnPollGroup(_pollGroup, pIncomingMsgs, SESSION_SERVER_MAX_MESSAGES_PER_POLL);
 	bool bSendLobbyAllReady = false;
@@ -146,6 +170,33 @@ int SessionServer::Step()
 			}
 			else {
 				spdlog::warn("Server: got unrecognized message type: {}", (int)type);
+			}
+		}
+		else if (type == SessionProtocol::MT_GGPO_DATA) {
+			SessionProtocol::GgpoDataMsg ggpoMsg;
+			try {
+				msg.get_to(ggpoMsg);
+			}
+			catch (json::exception e) {
+				spdlog::debug("Server: could not deserialize ggpo_data message");
+				continue;
+			}
+
+			// Validate source matches the sending connection to prevent spoofing.
+			if (ggpoMsg.src.host == _identity && ggpoMsg.src.user != std::to_string(conn)) {
+				spdlog::debug("Server: dropping fraudulent ggpo_data; {} masqueraded as {}", conn, ggpoMsg.src.user);
+				continue;
+			}
+
+			// Route to the destination client by CID.
+			for (auto clientIter = clients.begin(); clientIter != clients.end(); clientIter++) {
+				if (clientIter->data.connId == ggpoMsg.dest) {
+					_interface->SendMessageToConnection(
+						clientIter->conn, (const char*)pIncomingMsg->m_pData, pIncomingMsg->m_cbSize,
+						k_nSteamNetworkingSend_Unreliable, nullptr
+					);
+					break;
+				}
 			}
 		}
 		else {
@@ -417,6 +468,10 @@ int SessionServer::Close()
 	if (_listenSock != k_HSteamListenSocket_Invalid) {
 		_interface->CloseListenSocket(_listenSock);
 		_listenSock = k_HSteamListenSocket_Invalid;
+	}
+	if (_p2pListenSock != k_HSteamListenSocket_Invalid) {
+		_interface->CloseListenSocket(_p2pListenSock);
+		_p2pListenSock = k_HSteamListenSocket_Invalid;
 	}
 	return 0;
 }

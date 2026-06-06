@@ -14,10 +14,16 @@ add_compile_definitions(WIN32_LEAN_AND_MEAN)
 
 find_library(LIB_DETOURS "detours")
 find_package(CLI11 CONFIG REQUIRED)
+# Use CLI11 header-only for Launcher to avoid x86 CRT compatibility issues
+# with the vcpkg binary-cached compiled lib.
+add_library(CLI11_HeaderOnly INTERFACE)
+get_target_property(_cli11_inc CLI11::CLI11 INTERFACE_INCLUDE_DIRECTORIES)
+target_include_directories(CLI11_HeaderOnly INTERFACE ${_cli11_inc})
 find_package(GameNetworkingSockets CONFIG REQUIRED)
 find_package(ggpo CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(ixwebsocket CONFIG REQUIRED)
 find_package(protobuf CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 
@@ -69,6 +75,8 @@ target_link_libraries(
 )
 
 add_library(sf4e STATIC
+    "src/sf4e/sf4e__Signaling.hxx"
+    "src/sf4e/sf4e__Signaling.cxx"
     "src/sf4e/sf4e.hxx"
     "src/sf4e/sf4e.cxx"
     "src/sf4e/sf4e__Event.hxx"
@@ -99,7 +107,7 @@ add_library(sf4e STATIC
 target_link_libraries(
     sf4e
     PRIVATE ${LIB_DETOURS} Session "Kernel32" "ws2_32" "Mswsock" "AdvApi32" "Shlwapi" "Bcrypt" "Xinput9_1_0"
-    PUBLIC imgui::imgui nlohmann_json::nlohmann_json spdlog::spdlog GameNetworkingSockets::shared ggpo::GGPO
+    PUBLIC imgui::imgui nlohmann_json::nlohmann_json spdlog::spdlog GameNetworkingSockets::shared ggpo::GGPO ixwebsocket::ixwebsocket
 )
 
 add_library(Session STATIC
@@ -122,7 +130,7 @@ target_link_libraries(SessionInteractiveTest PRIVATE nlohmann_json::nlohmann_jso
 
 add_executable(Launcher WIN32 src/launcher/launcher.cxx)
 target_include_directories(Launcher PRIVATE ${VALVEFILEVDF_INCLUDE_DIRS})
-target_link_libraries(Launcher PRIVATE ${LIB_DETOURS} CLI11::CLI11 spdlog::spdlog "shlwapi" "pathcch")
+target_link_libraries(Launcher PRIVATE ${LIB_DETOURS} CLI11_HeaderOnly spdlog::spdlog "shlwapi" "pathcch")
 
 add_library(Sidecar SHARED src/sidecar/sidecar.cxx)
 target_include_directories(Sidecar PRIVATE ${VALVEFILEVDF_INCLUDE_DIRS})

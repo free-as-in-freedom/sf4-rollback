@@ -3,8 +3,7 @@
   "version-string": "0.0.1",
   "dependencies": [
     {
-      "name": "cli11",
-      "version>=": "2.4.2"
+      "name": "cli11"
     },
     {
       "name": "detours",
@@ -27,6 +26,9 @@
       ]
     },
     {
+      "name": "ixwebsocket"
+    },
+    {
       "name": "nlohmann-json",
       "version>=": "3.11.2"
     },
@@ -42,5 +44,9 @@
       "version>=": "1.0.0#1"
     }
   ],
-  "builtin-baseline": "fafcc0e93bfba303e5e48790def745d27e6d449b"
+  "builtin-baseline": "fafcc0e93bfba303e5e48790def745d27e6d449b",
+  "overrides": [
+    { "name": "cli11", "version": "2.3.2" },
+    { "name": "protobuf", "version": "3.21.12" }
+  ]
 }

@@ -9,6 +9,8 @@
 
 #include "sf4e__SessionProtocol.hxx"
 
+namespace sf4e { class SignalingClient; }
+
 namespace sf4e {
 	extern const int SESSION_CLIENT_MAX_MESSAGES_PER_POLL;
 
@@ -31,6 +33,7 @@ namespace sf4e {
 			void (*OnError)(ErrorType errorType, SessionClient* const client, const Callbacks& callbacks);
 			void (*OnReady)(SessionClient* const client, const Callbacks& callbacks);
 			void (*OnBattleSynced)(SessionClient* const client, const Callbacks& callbacks);
+			void (*OnGgpoData)(const SessionProtocol::ConnectionID& src, const std::vector<uint8_t>& payload, SessionClient* const client, const Callbacks& callbacks);
 		};
 
 		SessionClient(
@@ -43,6 +46,9 @@ namespace sf4e {
 
 		int Connect(HSteamNetConnection newConn);
 		int Connect(const SteamNetworkingIPAddr& serverAddr);
+		// Connect to a host via P2P using the provided signaling relay.
+		// The host must be running ListenP2P() with the matching room code.
+		int ConnectP2P(SignalingClient* signalingClient);
 		void Disconnect();
 		int Step();
 		void PrepareForCallbacks();
@@ -81,7 +87,7 @@ namespace sf4e {
 		bool _connected = false;
 		HSteamNetConnection _conn;
 		ISteamNetworkingSockets* _interface;
-
+		SignalingClient* _signalingClient = nullptr;
 
 		void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t* pInfo);
 

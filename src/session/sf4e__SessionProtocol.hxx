@@ -103,6 +103,8 @@ namespace sf4e {
 			MT_BATTLE_SNAPSHOT,
 
 			MT_FORWARD,
+
+			MT_GGPO_DATA,
 		};
 
 		NLOHMANN_JSON_SERIALIZE_ENUM(MessageType, {
@@ -125,6 +127,7 @@ namespace sf4e {
 			{MT_BATTLE_SNAPSHOT, "battle_snapshot"},
 
 			{MT_FORWARD, "forward"},
+			{MT_GGPO_DATA, "ggpo_data"},
 		})
 
 		enum JoinResult {
@@ -244,6 +247,13 @@ namespace sf4e {
 			nlohmann::json msg;
 		};
 
+		struct GgpoDataMsg {
+			MessageType type = MT_GGPO_DATA;
+			ConnectionID src;
+			ConnectionID dest;
+			std::vector<uint8_t> payload;
+		};
+
 		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ConnectionID, host, user);
 		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LobbyID, host, key);
 
@@ -265,6 +275,7 @@ namespace sf4e {
 		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(PreBattleSetEnv, type, rngSeed);
 		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(PreBattleSetStage, type, stageID);
 		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ForwardMessage, type, src, dest, msg);
+		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(GgpoDataMsg, type, src, dest, payload);
 
 		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(StateSnapshot::CharaStateSnapshot, status, rootPos, side, vit, vitmax, revenge, revengemax, recoverable, recoverablemax, super, supermax, sctimeamt, sctimemax, uctime, uctimemax, damage, combodamage);
 		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(StateSnapshot, frameIdx, chara);
