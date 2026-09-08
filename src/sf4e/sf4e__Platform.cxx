@@ -168,6 +168,17 @@ int fMain::Initialize(void* a, void* b, void* c) {
     );
 
     // Steam (and ISteamNetworkingSockets) is already initialized by SSFIV.exe.
+    // The stock game ships a 2014-era steam_api.dll that predates
+    // ISteamNetworkingSockets entirely, so the accessor returns null unless the
+    // Steamworks SDK redistributable has replaced it. Fail loudly here rather
+    // than null-dereferencing deep in the netplay code.
+    if (!SteamNetworkingSockets()) {
+        spdlog::error(
+            "ISteamNetworkingSockets unavailable. Replace the game's steam_api.dll "
+            "with the Steamworks SDK redistributable; netplay is disabled."
+        );
+    }
+
     return rval;
 }
 
