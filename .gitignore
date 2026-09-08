@@ -1,9 +1,9 @@
 /build
 /msvc-build
+/msvc-out
 /.vs
 /.vscode
 /CMakeSettings.json
 /CMakeUserPresets.json
 /.claude
 /deploy.bat
-

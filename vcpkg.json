@@ -10,10 +10,6 @@
       "version>=": "4.0.1#7"
     },
     {
-      "name": "gamenetworkingsockets",
-      "version>=": "1.4.1#1"
-    },
-    {
       "name": "ggpo",
       "version>=": "1.0.0#1"
     },
@@ -46,7 +42,6 @@
   ],
   "builtin-baseline": "fafcc0e93bfba303e5e48790def745d27e6d449b",
   "overrides": [
-    { "name": "cli11", "version": "2.3.2" },
-    { "name": "protobuf", "version": "3.21.12" }
+    { "name": "cli11", "version": "2.3.2" }
   ]
 }

@@ -5,8 +5,8 @@
 
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
-#include <GameNetworkingSockets/steam/steamnetworkingsockets.h>
-#include <GameNetworkingSockets/steam/isteamnetworkingutils.h>
+#include <steam/isteamnetworkingsockets.h>
+#include <steam/isteamnetworkingutils.h>
 #include <ggponet.h>
 
 #include "../Dimps/Dimps.hxx"
@@ -410,6 +410,7 @@ int SessionClient::Step()
 
 void SessionClient::OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t* pInfo)
 {
+	spdlog::debug("Client: conn {} state {} -> {}", (int)pInfo->m_hConn, (int)pInfo->m_eOldState, (int)pInfo->m_info.m_eState);
 
 	switch (pInfo->m_info.m_eState)
 	{
@@ -420,12 +421,10 @@ void SessionClient::OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusCh
 		if (pInfo->m_eOldState == k_ESteamNetworkingConnectionState_Connecting)
 		{
 			spdlog::error("Client could not connect: {}", pInfo->m_info.m_szEndDebug);
-			MessageBoxA(NULL, "Client: could not connect- maybe wrong IP or no forwarding", NULL, MB_OK);
 		}
 		else if (pInfo->m_info.m_eState == k_ESteamNetworkingConnectionState_ProblemDetectedLocally)
 		{
 			spdlog::error("Client lost contact with host: {}", pInfo->m_info.m_szEndDebug);
-			MessageBoxA(NULL, "Client: Problem detected locally- lost contact with host", NULL, MB_OK);
 		}
 
 		// Clean up the connection.  This is important!
@@ -549,5 +548,6 @@ EResult SessionClient::Forward(const SessionProtocol::ConnectionID& dest, const 
 void SessionClient::SteamNetConnectionStatusChangedCallback(SteamNetConnectionStatusChangedCallback_t* pInfo)
 {
 	SessionClient* instance = (SessionClient *)SteamNetworkingSockets()->GetConnectionUserData(pInfo->m_hConn);
+	if (!instance) return;
 	instance->OnSteamNetConnectionStatusChanged(pInfo);
 }

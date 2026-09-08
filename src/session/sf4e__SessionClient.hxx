@@ -4,8 +4,8 @@
 #include <vector>
 
 #include <nlohmann/json.hpp>
-#include <GameNetworkingSockets/steam/steamnetworkingsockets.h>
-#include <GameNetworkingSockets/steam/isteamnetworkingutils.h>
+#include <steam/isteamnetworkingsockets.h>
+#include <steam/isteamnetworkingutils.h>
 
 #include "sf4e__SessionProtocol.hxx"
 

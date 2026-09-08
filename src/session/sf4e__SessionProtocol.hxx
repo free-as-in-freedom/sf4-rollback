@@ -4,7 +4,7 @@
 #include <utility>
 
 
-#include <GameNetworkingSockets/steam/isteamnetworkingutils.h>
+#include <steam/isteamnetworkingutils.h>
 #include <nlohmann/json.hpp>
 
 #include "../Dimps/Dimps__GameEvents.hxx"

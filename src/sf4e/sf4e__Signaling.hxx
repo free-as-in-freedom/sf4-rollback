@@ -5,9 +5,9 @@
 #include <vector>
 
 #include <ixwebsocket/IXWebSocket.h>
-#include <GameNetworkingSockets/steam/steamnetworkingsockets.h>
-#include <GameNetworkingSockets/steam/steamnetworkingcustomsignaling.h>
-#include <GameNetworkingSockets/steam/isteamnetworkingutils.h>
+#include <steam/isteamnetworkingsockets.h>
+#include <steamnetworkingcustomsignaling.h>
+#include <steam/isteamnetworkingutils.h>
 
 namespace sf4e {
 

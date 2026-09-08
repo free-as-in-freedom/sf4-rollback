@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 
-#include <GameNetworkingSockets/steam/isteamnetworkingutils.h>
-#include <GameNetworkingSockets/steam/steamnetworkingsockets.h>
+#include <steam/isteamnetworkingutils.h>
+#include <steam/isteamnetworkingsockets.h>
 #include <nlohmann/json.hpp>
 
 #include "../Dimps/Dimps__Math.hxx"

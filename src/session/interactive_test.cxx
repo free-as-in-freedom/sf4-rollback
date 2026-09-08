@@ -1,15 +1,18 @@
 #include <deque>
+#include <fstream>
 #include <memory>
 #include <string>
 
 #include <d3d9.h>
 #include <tchar.h>
 
+#include <steam/steam_api.h>
 #include <imgui.h>
 #include <imgui_impl_dx9.h>
 #include <imgui_impl_win32.h>
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
+#include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/wincolor_sink.h>
 
 #include "sf4e__SessionClient.hxx"
@@ -436,19 +439,21 @@ int main(int, char**)
     sinks.push_back(std::shared_ptr<spdlog::sinks::wincolor_stdout_sink_mt>(
         new spdlog::sinks::wincolor_stdout_sink_mt()
     ));
+    sinks.push_back(std::shared_ptr<spdlog::sinks::basic_file_sink_mt>(
+        new spdlog::sinks::basic_file_sink_mt(L"interactive-test.log", true)
+    ));
     std::shared_ptr<spdlog::logger> logger(new spdlog::logger("interactive-test", sinks.begin(), sinks.end()));
     spdlog::set_default_logger(logger);
     spdlog::set_level(spdlog::level::debug);
     spdlog::info("Welcome to interactive-test");
 
-    SteamDatagramErrMsg errMsg;
-    if (!GameNetworkingSockets_Init(nullptr, errMsg)) {
-        spdlog::error("GameNetworkingSockets_Init failed.  {}", errMsg);
+    // Write steam_appid.txt so SteamAPI_Init finds the app without launching via Steam.
+    { std::ofstream f("steam_appid.txt"); f << "45760"; }
+
+    if (!SteamAPI_Init()) {
+        spdlog::error("SteamAPI_Init failed - make sure Steam is running");
+        return 1;
     }
-    SteamNetworkingUtils()->SetGlobalConfigValueString(
-        k_ESteamNetworkingConfig_P2P_STUN_ServerList,
-        "stun.l.google.com:19302,stun1.l.google.com:19302"
-    );
     SteamNetworkingUtils()->SetDebugOutputFunction(
         k_ESteamNetworkingSocketsDebugOutputType_Msg,
         [](ESteamNetworkingSocketsDebugOutputType, const char* pszMsg) {
@@ -500,6 +505,9 @@ int main(int, char**)
         if (g_server) {
             g_server->PrepareForCallbacks();
         }
+        SteamAPI_RunCallbacks();
+        // SteamAPI_RunCallbacks() does NOT dispatch per-connection config callbacks
+        // (k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged). Call this too.
         SteamNetworkingSockets()->RunCallbacks();
 
         auto iter = g_instances.begin();
@@ -600,7 +608,7 @@ int main(int, char**)
     g_signalingClient.reset();
     g_server.reset();
     g_instances.clear();
-    GameNetworkingSockets_Kill();
+    SteamAPI_Shutdown();
     spdlog::shutdown();
 
     return 0;

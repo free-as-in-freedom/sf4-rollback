@@ -8,7 +8,7 @@
 #include <strsafe.h>
 
 #include <detours/detours.h>
-#include <steam/steamnetworkingsockets.h>
+#include <steam/isteamnetworkingsockets.h>
 #include <steam/isteamnetworkingutils.h>
 
 #include "spdlog/spdlog.h"
@@ -167,11 +167,7 @@ int fMain::Initialize(void* a, void* b, void* c) {
         Dimps::Platform::D3D::staticMethods.GetSingleton()->lpD3DDevice
     );
 
-    SteamDatagramErrMsg errMsg;
-    if (!GameNetworkingSockets_Init(nullptr, errMsg)) {
-        spdlog::error("GameNetworkingSockets_Init failed.  {}", errMsg);
-    }
-
+    // Steam (and ISteamNetworkingSockets) is already initialized by SSFIV.exe.
     return rval;
 }
 
@@ -182,7 +178,6 @@ void fMain::Destroy() {
     if (fUserApp::server) {
         delete fUserApp::server.release();
     }
-    GameNetworkingSockets_Kill();
     spdlog::shutdown();
     (this->*rMain::publicMethods.Destroy)();
 }

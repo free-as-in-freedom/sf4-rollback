@@ -4,8 +4,8 @@
 #include <windows.h>
 #include <detours/detours.h>
 
-#include <GameNetworkingSockets/steam/steamnetworkingsockets.h>
-#include <GameNetworkingSockets/steam/isteamnetworkingutils.h>
+#include <steam/isteamnetworkingsockets.h>
+#include <steam/isteamnetworkingutils.h>
 #include <spdlog/spdlog.h>
 
 #include "../Dimps/Dimps.hxx"

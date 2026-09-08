@@ -19,13 +19,22 @@ find_package(CLI11 CONFIG REQUIRED)
 add_library(CLI11_HeaderOnly INTERFACE)
 get_target_property(_cli11_inc CLI11::CLI11 INTERFACE_INCLUDE_DIRECTORIES)
 target_include_directories(CLI11_HeaderOnly INTERFACE ${_cli11_inc})
-find_package(GameNetworkingSockets CONFIG REQUIRED)
 find_package(ggpo CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(ixwebsocket CONFIG REQUIRED)
-find_package(protobuf CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
+
+# Steamworks SDK — provides ISteamNetworkingSockets with SDR relay support.
+set(STEAMWORKS_SDK "D:/code/steamworks-sdk" CACHE PATH "Path to Steamworks SDK root")
+add_library(SteamworksSDK INTERFACE)
+target_include_directories(SteamworksSDK INTERFACE
+    "${STEAMWORKS_SDK}/public"
+    "${CMAKE_SOURCE_DIR}/vendor"
+)
+target_link_libraries(SteamworksSDK INTERFACE
+    "${STEAMWORKS_SDK}/redistributable_bin/steam_api.lib"
+)
 
 find_path(VALVEFILEVDF_INCLUDE_DIRS "vdf_parser.hpp")
 
@@ -107,7 +116,7 @@ add_library(sf4e STATIC
 target_link_libraries(
     sf4e
     PRIVATE ${LIB_DETOURS} Session "Kernel32" "ws2_32" "Mswsock" "AdvApi32" "Shlwapi" "Bcrypt" "Xinput9_1_0"
-    PUBLIC imgui::imgui nlohmann_json::nlohmann_json spdlog::spdlog GameNetworkingSockets::shared ggpo::GGPO ixwebsocket::ixwebsocket
+    PUBLIC imgui::imgui nlohmann_json::nlohmann_json spdlog::spdlog SteamworksSDK ggpo::GGPO ixwebsocket::ixwebsocket
 )
 
 add_library(Session STATIC
@@ -121,11 +130,16 @@ add_library(Session STATIC
 target_link_libraries(
     Session
     PRIVATE Dimps
-    PUBLIC nlohmann_json::nlohmann_json spdlog::spdlog GameNetworkingSockets::shared
+    PUBLIC nlohmann_json::nlohmann_json spdlog::spdlog SteamworksSDK
 )
 
 add_executable(SessionInteractiveTest "src/session/interactive_test.cxx")
 target_link_libraries(SessionInteractiveTest PRIVATE nlohmann_json::nlohmann_json imgui::imgui spdlog::spdlog Dimps sf4e Session "d3d9")
+add_custom_command(TARGET SessionInteractiveTest POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${STEAMWORKS_SDK}/redistributable_bin/steam_api.dll"
+        "$<TARGET_FILE_DIR:SessionInteractiveTest>/steam_api.dll"
+)
 # target_link_options(SessionInteractiveTest PRIVATE "/entry:wWinMainCRTStartup")
 
 add_executable(Launcher WIN32 src/launcher/launcher.cxx)
@@ -141,6 +155,10 @@ target_compile_definitions(Launcher PRIVATE -D_UNICODE -DUNICODE)
 install(
   TARGETS Launcher Sidecar
   RUNTIME DESTINATION "."
+)
+install(
+  FILES "${STEAMWORKS_SDK}/redistributable_bin/steam_api.dll"
+  DESTINATION "."
 )
 
 set(CPACK_PACKAGE_NAME "${PROJECT_NAME}")

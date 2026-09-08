@@ -2,7 +2,7 @@
 #include <utility>
 #include <vector>
 
-#include <GameNetworkingSockets/steam/steamnetworkingtypes.h>
+#include <steam/steamnetworkingtypes.h>
 #include <ggponet.h>
 
 #include "../Dimps/Dimps__Game.hxx"

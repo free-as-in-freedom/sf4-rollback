@@ -5,8 +5,8 @@
 
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
-#include <GameNetworkingSockets/steam/steamnetworkingsockets.h>
-#include <GameNetworkingSockets/steam/isteamnetworkingutils.h>
+#include <steam/isteamnetworkingsockets.h>
+#include <steam/isteamnetworkingutils.h>
 #include <ggponet.h>
 
 #include "../Dimps/Dimps.hxx"
@@ -494,6 +494,8 @@ void SessionServer::ResetBattleSync()
 
 void SessionServer::OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t* pInfo)
 {
+	spdlog::debug("Server: conn {} state {} -> {}", (int)pInfo->m_hConn, (int)pInfo->m_eOldState, (int)pInfo->m_info.m_eState);
+
 	switch (pInfo->m_info.m_eState)
 	{
 	case k_ESteamNetworkingConnectionState_ClosedByPeer:
@@ -543,18 +545,27 @@ void SessionServer::OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusCh
 		break;
 	}
 
+	case k_ESteamNetworkingConnectionState_Connected:
+	{
+		spdlog::info("Server: connection {} fully connected", (int)pInfo->m_hConn);
+		break;
+	}
+
 	case k_ESteamNetworkingConnectionState_Connecting:
 	{
+		spdlog::info("Server: accepting incoming connection {}", (int)pInfo->m_hConn);
 		// Try to accept the connection.
-		if (_interface->AcceptConnection(pInfo->m_hConn) != k_EResultOK)
+		EResult res = _interface->AcceptConnection(pInfo->m_hConn);
+		if (res != k_EResultOK)
 		{
 			// This could fail.  If the remote host tried to connect, but then
 			// disconnected, the connection may already be half closed.  Just
 			// destroy whatever we have on our side.
 			_interface->CloseConnection(pInfo->m_hConn, 0, nullptr, false);
-			spdlog::error("Can't accept connection.  (It was already closed?)");
+			spdlog::error("Can't accept connection (result={}). Already closed?", (int)res);
 			break;
 		}
+		spdlog::info("Server: AcceptConnection OK for conn {}", (int)pInfo->m_hConn);
 
 		_interface->SetConnectionPollGroup(pInfo->m_hConn, _pollGroup);
 	}
